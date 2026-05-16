@@ -20,9 +20,12 @@ win:
   executableName: open-webui
 nsis:
   artifactName: ${name}-${arch}-setup.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  createStartMenuShortcut: true
 mac:
   target:
     - target: dmg

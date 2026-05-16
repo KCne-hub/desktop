@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fade, fly } from 'svelte/transition'
+  import { fade } from 'svelte/transition'
   import { onMount } from 'svelte'
   import { config, serverInfo } from '../../stores'
   import i18n from '../../i18n'
@@ -8,10 +8,15 @@
 
   let { onBack, onComplete, autoStart = false } = $props()
 
-  let phase = $state(autoStart ? 'working' : 'ready') // ready | working | done | error
+  let phase = $state('ready') // ready | working | done | error
   let errorMsg = $state('')
   let installDir = $state('')
   let defaultInstallDir = $state('')
+  let apiBaseUrl = $state('')
+  let apiKey = $state('')
+  let defaultModels = $state('')
+  let ollamaBaseUrl = $state('http://127.0.0.1:11434')
+  let showAdvanced = $state(false)
 
   onMount(async () => {
     defaultInstallDir = await window.electronAPI.getInstallDir()
@@ -19,19 +24,68 @@
     if (autoStart) install()
   })
 
-  const install = async () => {
+  const normalizeUrl = (value: string): string => value.trim().replace(/\/+$/, '')
+
+  const buildEnvVars = (): Record<string, string> => {
+    const envVars: Record<string, string> = {}
+    const baseUrl = normalizeUrl(apiBaseUrl)
+    const key = apiKey.trim()
+    const models = defaultModels.trim()
+    const ollamaUrl = normalizeUrl(ollamaBaseUrl)
+
+    if (baseUrl) {
+      envVars.OPENAI_API_BASE_URL = baseUrl
+      envVars.OPENAI_API_BASE_URLS = baseUrl
+    }
+    if (key) {
+      envVars.OPENAI_API_KEY = key
+      envVars.OPENAI_API_KEYS = key
+    }
+    if (models) {
+      envVars.DEFAULT_MODELS = models
+    }
+    if (ollamaUrl) {
+      envVars.OLLAMA_BASE_URL = ollamaUrl
+      envVars.OLLAMA_BASE_URLS = ollamaUrl
+    }
+
+    return envVars
+  }
+
+  const saveSetupConfig = async (): Promise<void> => {
+    const setupConfig: Record<string, unknown> = {}
+    if (installDir && installDir !== defaultInstallDir) {
+      setupConfig.installDir = installDir
+    }
+
+    const setupEnvVars = buildEnvVars()
+    if (Object.keys(setupEnvVars).length > 0) {
+      const current = await window.electronAPI.getConfig()
+      setupConfig.envVars = {
+        ...(current?.envVars ?? {}),
+        ...setupEnvVars
+      }
+    }
+
+    if (Object.keys(setupConfig).length > 0) {
+      await window.electronAPI.setConfig(setupConfig)
+    }
+  }
+
+  const install = async (): Promise<void> => {
     phase = 'working'
     try {
-      // Save custom install directory before installing
-      if (installDir && installDir !== defaultInstallDir) {
-        await window.electronAPI.setConfig({ installDir })
-      }
+      await saveSetupConfig()
 
       const ok = await window.electronAPI.installPackage()
-      if (!ok) { phase = 'error'; errorMsg = $i18n.t('setup.install.failed'); return }
+      if (!ok) {
+        phase = 'error'
+        errorMsg = $i18n.t('setup.install.failed')
+        return
+      }
 
       await window.electronAPI.startServer()
-      const info = await window.electronAPI.getServerInfo()
+      await window.electronAPI.getServerInfo()
 
       await window.electronAPI.setDefaultConnection('local')
       config.set(await window.electronAPI.getConfig())
@@ -47,7 +101,7 @@
     }
   }
 
-  const changeInstallDir = async () => {
+  const changeInstallDir = async (): Promise<void> => {
     const folder = await window.electronAPI.selectFolder()
     if (folder) {
       installDir = folder
@@ -72,7 +126,7 @@
     </p>
 
     <!-- Install location -->
-    <div class="mb-6">
+    <div class="mb-5">
       <div class="text-[11px] opacity-40 mb-1.5">{$i18n.t('setup.install.installLocation')}</div>
       <div class="flex items-center gap-2">
         <div
@@ -91,23 +145,77 @@
       <div class="text-[10px] opacity-20 mt-1">{$i18n.t('setup.install.installLocationDesc')}</div>
     </div>
 
+    <!-- API setup -->
+    <div class="mb-5">
+      <div class="text-[11px] opacity-40 mb-1.5">{$i18n.t('setup.api.title')}</div>
+      <div class="flex flex-col gap-2">
+        <input
+          type="text"
+          bind:value={apiBaseUrl}
+          placeholder={$i18n.t('setup.api.baseUrlPlaceholder')}
+          class="px-3 py-2 bg-black/[0.04] dark:bg-white/[0.06] text-[12px] text-[#1d1d1f] dark:text-[#fafafa] placeholder:opacity-20 outline-none transition no-drag border-none rounded-lg font-mono"
+        />
+        <input
+          type="password"
+          bind:value={apiKey}
+          placeholder={$i18n.t('setup.api.keyPlaceholder')}
+          class="px-3 py-2 bg-black/[0.04] dark:bg-white/[0.06] text-[12px] text-[#1d1d1f] dark:text-[#fafafa] placeholder:opacity-20 outline-none transition no-drag border-none rounded-lg font-mono"
+        />
+        <input
+          type="text"
+          bind:value={defaultModels}
+          placeholder={$i18n.t('setup.api.modelsPlaceholder')}
+          class="px-3 py-2 bg-black/[0.04] dark:bg-white/[0.06] text-[12px] text-[#1d1d1f] dark:text-[#fafafa] placeholder:opacity-20 outline-none transition no-drag border-none rounded-lg font-mono"
+        />
+      </div>
+      <div class="text-[10px] opacity-20 mt-1 leading-relaxed">
+        {$i18n.t('setup.api.description')}
+      </div>
+
+      <button
+        class="mt-2 text-[11px] opacity-35 hover:opacity-65 transition bg-transparent border-none text-[#1d1d1f] dark:text-[#fafafa]"
+        onclick={() => (showAdvanced = !showAdvanced)}
+      >
+        {showAdvanced ? $i18n.t('setup.api.hideAdvanced') : $i18n.t('setup.api.showAdvanced')}
+      </button>
+
+      {#if showAdvanced}
+        <div class="mt-2" in:fade={{ duration: 150 }}>
+          <input
+            type="text"
+            bind:value={ollamaBaseUrl}
+            placeholder={$i18n.t('setup.api.ollamaPlaceholder')}
+            class="w-full px-3 py-2 bg-black/[0.04] dark:bg-white/[0.06] text-[12px] text-[#1d1d1f] dark:text-[#fafafa] placeholder:opacity-20 outline-none transition no-drag border-none rounded-lg font-mono"
+          />
+        </div>
+      {/if}
+    </div>
+
     <button
       class="w-fit inline-flex items-center gap-2 bg-white px-8 py-2.5 text-black text-[13px] transition hover:bg-gray-100 border-none"
       onclick={install}
     >
       {$i18n.t('setup.install.continue')}
-      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+      <svg
+        class="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="1.5"
+      >
         <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
       </svg>
     </button>
-
   {:else if phase === 'working'}
     <div class="flex flex-col items-center gap-5 py-10" in:fade={{ duration: 250 }}>
       <img src={logoImage} class="size-12 rounded-full dark:invert" alt="logo" />
       <div class="flex flex-col items-center gap-2 text-center">
         <div class="text-sm opacity-60">{$i18n.t('setup.install.installing')}</div>
         {#if $serverInfo?.status}
-          <div class="text-[11px] opacity-30 max-w-[220px] leading-relaxed" in:fade={{ duration: 200 }}>
+          <div
+            class="text-[11px] opacity-30 max-w-[220px] leading-relaxed"
+            in:fade={{ duration: 200 }}
+          >
             {$serverInfo.status}
           </div>
         {:else}
@@ -117,13 +225,11 @@
         {/if}
       </div>
     </div>
-
   {:else if phase === 'done'}
     <div class="flex flex-col items-center gap-4 py-10" in:fade={{ duration: 250 }}>
       <img src={logoImage} class="size-12 rounded-full dark:invert" alt="logo" />
       <div class="text-sm text-green-400 opacity-70">{$i18n.t('common.ready')}</div>
     </div>
-
   {:else if phase === 'error'}
     <div class="flex flex-col items-center gap-4 py-10" in:fade={{ duration: 250 }}>
       <div class="text-[12px] text-red-400 opacity-80">{errorMsg}</div>

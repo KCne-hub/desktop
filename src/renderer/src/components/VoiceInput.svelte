@@ -75,7 +75,7 @@
       // Request system-level mic permission (macOS) before activating the mic
       const permStatus = await api?.checkMicPermission()
       if (permStatus === 'denied') {
-        const msg = 'Microphone access denied. Enable it in System Settings → Privacy & Security → Microphone, then restart the app.'
+        const msg = '麦克风访问被拒绝。请在系统设置 → 隐私与安全性 → 麦克风中启用权限，然后重启应用。'
         showError(msg)
         api?.error(msg)
         return
@@ -106,10 +106,10 @@
       timer = setInterval(() => { duration++ }, 1000)
     } catch (err: any) {
       const msg = err?.name === 'NotAllowedError'
-        ? 'Microphone access denied. Check system permissions.'
+        ? '麦克风访问被拒绝。请检查系统权限。'
         : err?.name === 'NotFoundError'
-          ? 'No microphone found. Connect a microphone and try again.'
-          : err?.message || 'Mic access failed'
+          ? '未找到麦克风。请连接麦克风后重试。'
+          : err?.message || '麦克风访问失败'
       showError(msg)
       api?.error(msg)
     }
@@ -191,7 +191,7 @@
         api?.close()
       }
     } catch (err: any) {
-      const msg = err?.message || 'Transcription failed'
+      const msg = err?.message || '语音转写失败'
       showError(msg)
       api?.error(msg)
     }

@@ -129,7 +129,7 @@
       updateStatus = res.updateAvailable ? 'available' : 'up-to-date'
     } catch (e: any) {
       updateStatus = 'error'
-      updateError = e?.message ?? 'Check failed'
+      updateError = e?.message ?? '检查失败'
     }
   }
 
@@ -141,7 +141,7 @@
       updateInfo = null
     } catch (e: any) {
       updateStatus = 'error'
-      updateError = e?.message ?? 'Update failed'
+      updateError = e?.message ?? '更新失败'
     }
   }
 

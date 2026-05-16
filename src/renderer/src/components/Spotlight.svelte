@@ -110,11 +110,11 @@
           height: selRect.h
         })
         if (result === 'no-permission') {
-          showError('Screen Recording permission required. Opening System Settings…')
+          showError('需要屏幕录制权限，正在打开系统设置…')
         } else if (result && typeof result === 'string' && result.startsWith('data:')) {
           images = [...images, result]
         } else if (!result) {
-          showError('Screenshot capture failed.')
+          showError('截图失败。')
         }
         selRect = { x: 0, y: 0, w: 0, h: 0 }
       } else {
@@ -200,8 +200,8 @@
       <div class="attachments">
         {#each images as img, i}
           <div class="preview-item">
-            <img src={img} alt="Screenshot {i + 1}" />
-            <button class="preview-remove" onclick={() => removeImage(i)} aria-label="Remove">×</button>
+            <img src={img} alt="截图 {i + 1}" />
+            <button class="preview-remove" onclick={() => removeImage(i)} aria-label="移除">×</button>
           </div>
         {/each}
       </div>
@@ -214,7 +214,7 @@
         bind:this={inputEl}
         bind:value={query}
         type="text"
-        placeholder="What can I help you with today?"
+        placeholder="今天想问点什么？"
         autocomplete="off"
         spellcheck="false"
         onkeydown={(e) => {
@@ -225,7 +225,7 @@
         }}
       />
 
-      <button class="send" class:active={query.trim().length > 0 || images.length > 0} aria-label="Send" onclick={submit}>
+      <button class="send" class:active={query.trim().length > 0 || images.length > 0} aria-label="发送" onclick={submit}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 19V5" />
           <path d="M5 12l7-7 7 7" />
@@ -240,7 +240,7 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 8V6a2 2 0 012-2h2" /><path d="M4 16v2a2 2 0 002 2h2" /><path d="M16 4h2a2 2 0 012 2v2" /><path d="M16 20h2a2 2 0 002-2v-2" />
       </svg>
-      Drag anywhere to capture a screenshot
+      拖拽任意区域以截取屏幕
     </div>
   {/if}
 

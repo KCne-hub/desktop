@@ -158,7 +158,7 @@
           break
         case 'update:error':
           updateStatus = 'error'
-          updateError = data.data?.message ?? 'Unknown error'
+          updateError = data.data?.message ?? '未知错误'
           break
       }
     })
@@ -186,7 +186,7 @@
       await window.electronAPI.checkForUpdates()
     } catch (e: any) {
       updateStatus = 'error'
-      updateError = e?.message ?? 'Check failed'
+      updateError = e?.message ?? '检查失败'
     }
   }
 
@@ -197,7 +197,7 @@
       await window.electronAPI.downloadUpdate()
     } catch (e: any) {
       updateStatus = 'error'
-      updateError = e?.message ?? 'Download failed'
+      updateError = e?.message ?? '下载失败'
     }
   }
 

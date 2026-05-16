@@ -9,6 +9,20 @@
 
 Your AI, right on your desktop. [Open WebUI](https://github.com/open-webui/open-webui) as a native app. Run models locally or connect to any server. No Docker, no terminal, no setup. Download, launch, chat.
 
+## KCne Windows enhanced build
+
+This fork adds Windows-first setup improvements for a smoother packaged desktop experience:
+
+- 🪟 **Custom Windows install directory.** The NSIS installer now uses assisted setup and lets users choose where Open WebUI Desktop is installed.
+- 🔑 **First-run AI API setup.** During local setup, users can enter an OpenAI-compatible API Base URL, API Key, and default model before starting Open WebUI.
+- 🧩 **OpenAI-compatible relay friendly.** API values are saved into the existing Open WebUI Desktop `envVars` config and applied when the local server starts.
+- 🦙 **Optional Ollama endpoint.** Advanced setup includes an Ollama Base URL field, defaulting to `http://127.0.0.1:11434`.
+- 🌐 **Chinese and English setup text.** The new setup fields include zh-CN and en-US labels.
+
+Development branch: [`windows-installer-api-setup`](https://github.com/KCne-hub/desktop/tree/windows-installer-api-setup).
+
+> This fork keeps the Open WebUI Desktop foundation and only layers Windows installer/API setup enhancements on top of the upstream project.
+
 > [!WARNING]
 > **Early Alpha.** Things move fast and stuff might break. [Report bugs](https://github.com/open-webui/desktop/issues) or [come hang out on Discord](https://discord.gg/open-webui).
 

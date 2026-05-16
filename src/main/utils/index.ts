@@ -419,6 +419,8 @@ const pythonEnv = (extra: Record<string, string> = {}): Record<string, string> =
   return { ...base, ...extra }
 }
 
+export const hasBundledWheelhouse = (): boolean => getBundledWheelhouseDir() !== null
+
 export const isPythonInstalled = (installationDir?: string) => {
   const pythonPath = getPythonPath(installationDir)
   if (!fs.existsSync(pythonPath)) {

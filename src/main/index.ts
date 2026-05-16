@@ -37,6 +37,7 @@ import {
   isPackageInstalled,
   isPythonInstalled,
   getPackageVersion,
+  hasBundledWheelhouse,
   uninstallPackage,
   isUvInstalled,
   openUrl,
@@ -928,7 +929,8 @@ const startServerHandler = async (): Promise<boolean> => {
     // Only when autoUpdate is enabled (default) and no version pin is set.
     const autoUpdate = CONFIG?.localServer?.autoUpdate !== false
     const versionPin = CONFIG?.localServer?.version
-    if (autoUpdate && !versionPin && isPackageInstalled('open-webui')) {
+    const bundledWheelhouse = hasBundledWheelhouse()
+    if (autoUpdate && !versionPin && !bundledWheelhouse && isPackageInstalled('open-webui')) {
       try {
         log.info('[server] Auto-updating open-webui package to latest…')
         sendToRenderer('status:install', 'Updating Open WebUI…')

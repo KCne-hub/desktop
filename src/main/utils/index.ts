@@ -218,6 +218,35 @@ export const getPythonDownloadPath = (): string => {
   return path.join(getUserDataPath(), 'python.tar.gz')
 }
 
+
+const getOfflineRuntimeDir = (): string => {
+  const runtimeDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'offline-runtime')
+    : path.join(getAppPath(), 'build', 'offline-runtime')
+  return path.normalize(runtimeDir)
+}
+
+const getBundledPythonArchivePath = (): string | null => {
+  const archivePath = path.join(getOfflineRuntimeDir(), 'python.tar.gz')
+  return fs.existsSync(archivePath) ? archivePath : null
+}
+
+const getBundledWheelhouseDir = (): string | null => {
+  const wheelhouseDir = path.join(getOfflineRuntimeDir(), 'wheelhouse')
+  return fs.existsSync(wheelhouseDir) ? wheelhouseDir : null
+}
+
+const copyBundledPythonArchive = (): boolean => {
+  const bundledArchive = getBundledPythonArchivePath()
+  if (!bundledArchive) return false
+  const targetPath = getPythonDownloadPath()
+  if (!fs.existsSync(targetPath)) {
+    fs.copyFileSync(bundledArchive, targetPath)
+    log.info(`Using bundled Python archive: ${bundledArchive}`)
+  }
+  return true
+}
+
 export const getPythonInstallationDir = (): string => {
   const pythonDir = path.join(getInstallDir(), 'python')
   if (!fs.existsSync(pythonDir)) {
@@ -265,21 +294,25 @@ const checkInternet = async () => {
 export const installPython = async (installationDir?: string, onStatus?: (status: string) => void): Promise<boolean> => {
   const pythonDownloadPath = getPythonDownloadPath()
   if (!fs.existsSync(pythonDownloadPath)) {
-    if (!(await checkInternet())) {
-      throw new Error(
-        'An active internet connection is required. Please connect to the internet and try again.'
-      )
+    if (copyBundledPythonArchive()) {
+      onStatus?.('Using bundled Python runtime…')
+    } else {
+      if (!(await checkInternet())) {
+        throw new Error(
+          'An active internet connection is required. Please connect to the internet and try again.'
+        )
+      }
+      let lastReportedPct = -1
+      await downloadPython((progress, downloaded, total) => {
+        const pct = Math.floor(progress)
+        if (pct === lastReportedPct) return
+        lastReportedPct = pct
+        const mb = (downloaded / 1024 / 1024).toFixed(1)
+        const totalMb = (total / 1024 / 1024).toFixed(1)
+        log.info(`Downloading Python: ${pct}% (${mb}/${totalMb} MB)`)
+        onStatus?.(`Downloading Python… ${pct}% (${mb}/${totalMb} MB)`)
+      })
     }
-    let lastReportedPct = -1
-    await downloadPython((progress, downloaded, total) => {
-      const pct = Math.floor(progress)
-      if (pct === lastReportedPct) return
-      lastReportedPct = pct
-      const mb = (downloaded / 1024 / 1024).toFixed(1)
-      const totalMb = (total / 1024 / 1024).toFixed(1)
-      log.info(`Downloading Python: ${pct}% (${mb}/${totalMb} MB)`)
-      onStatus?.(`Downloading Python… ${pct}% (${mb}/${totalMb} MB)`)
-    })
   }
   if (!fs.existsSync(pythonDownloadPath)) {
     log.error('Python download not found')
@@ -312,10 +345,17 @@ export const installPython = async (installationDir?: string, onStatus?: (status
   try {
     onStatus?.('Installing uv package manager…')
     const pythonPath = getPythonPath(installationDir)
+    const wheelhouseDir = getBundledWheelhouseDir()
+    const installArgs = wheelhouseDir
+      ? ['-m', 'pip', 'install', '--no-index', '--find-links', wheelhouseDir, 'uv']
+      : ['-m', 'pip', 'install', 'uv']
+    if (wheelhouseDir) {
+      log.info(`Installing uv from bundled wheelhouse: ${wheelhouseDir}`)
+    }
     await new Promise<void>((resolve, reject) => {
       execFile(
         pythonPath,
-        ['-m', 'pip', 'install', 'uv'],
+        installArgs,
         {
           encoding: 'utf-8',
           env: pythonEnv()
@@ -441,15 +481,18 @@ export const installPackage = (packageName: string, version?: string, onStatus?:
       return reject(new Error('Python is not installed. Please reinstall the app or run setup again.'))
     }
     const pythonPath = getPythonPath()
+    const wheelhouseDir = getBundledWheelhouseDir()
+    const packageSpec = version ? `${packageName}==${version}` : packageName
+    const installArgs = wheelhouseDir
+      ? ['-m', 'uv', 'pip', 'install', '--no-index', '--find-links', wheelhouseDir, packageSpec]
+      : ['-m', 'uv', 'pip', 'install', ...(version ? [packageSpec] : [packageName, '-U'])]
+    if (wheelhouseDir) {
+      log.info(`Installing ${packageSpec} from bundled wheelhouse: ${wheelhouseDir}`)
+      onStatus?.(`Installing ${packageName} from bundled runtime…`)
+    }
     const commandProcess = execFile(
       pythonPath,
-      [
-        '-m',
-        'uv',
-        'pip',
-        'install',
-        ...(version ? [`${packageName}==${version}`] : [packageName, '-U'])
-      ],
+      installArgs,
       {
         env: pythonEnv()
       }

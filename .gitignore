@@ -7,3 +7,5 @@ out
 .eslintcache
 *.log*
 *.tsbuildinfo
+build/offline-runtime/*
+!build/offline-runtime/README.txt

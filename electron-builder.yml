@@ -13,6 +13,10 @@ files:
 extraResources:
   - from: CHANGELOG.md
     to: CHANGELOG.md
+  - from: build/offline-runtime
+    to: offline-runtime
+    filter:
+      - '**/*'
 asarUnpack:
   - resources/**
   - node_modules/node-pty/**
